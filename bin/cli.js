@@ -95,6 +95,7 @@ const startScraper = async (argv) => {
             console.log(argv.file)
             const tasks = readInCsv(argv.file)
             const jsonToCsv = new Parser({flatten: true});
+            const res = []
             for (let t of tasks) {
                 argv.asin = t[1];
 
@@ -110,8 +111,9 @@ const startScraper = async (argv) => {
                 });
 
                 const wmt = await wmtFormat(t[0], data.result[0])
-                await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(wmt), 'utf8', cb));
+                res.push(wmt)
             }
+            await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(res), 'utf8', cb));
 
         } else {
             argv.scrapeType = argv._[0];

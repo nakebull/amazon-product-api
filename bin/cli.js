@@ -1,31 +1,141 @@
 #!/usr/bin/env node
-
+const fs = require('fs');
+const request = require('request');
+const {fromCallback} = require('bluebird');
 const AmazonScraper = require('../lib');
+const {Parser} = require('json2csv');
+const getDirName = require('path').dirname;
 
-const startScraper = async (argv) => {
-    argv.scrapeType = argv._[0];
+
+const readInCsv = (csvFile) => {
+    const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
+    return fs.readFileSync(csvFile).toString().split("\n").map(ln => {
+        const cols = ln.split(",")
+        if (cols.length !== 2) {
+            console.error("Wrong Input: " + ln)
+        }
+        const m = cols[1].match(regex)
+        if (m === null) {
+            console.error("Wrong Url: " + cols[1])
+        } else {
+            return [cols[0], m[4]]
+        }
+    }).filter(x => {
+        return x != null
+    });
+}
+
+const wmtFormat = async (sku, data) => {
+    const wmt = {
+        sku: sku,
+        category: "",
+        product_name: data['title'],
+        description: data['description'],
+        feature1: "",
+        feature2: "",
+        feature3: "",
+        feature4: "",
+        feature5: "",
+        feature6: "",
+        feature7: "",
+        feature8: "",
+        feature9: "",
+        feature10: "",
+        image1: "",
+        image2: "",
+        image3: "",
+        image4: "",
+        image5: "",
+        image6: "",
+        image7: "",
+        image8: "",
+        image9: "",
+        image10: "",
+        price: 0.0,
+    }
     try {
-        const data = await AmazonScraper[argv.scrapeType]({ ...argv, cli: true, rating: [argv['min-rating'], argv['max-rating']] });
-        switch (argv.scrapeType) {
-            case 'countries':
-                console.table(data);
-                break;
-            case 'categories':
-                console.table(data);
-                break;
-            case 'products':
-            case 'reviews':
-                if (!argv.filetype) {
-                    console.log(JSON.stringify(data));
-                }
-                break;
-            case 'asin':
-                if (!argv.filetype) {
-                    console.log(data.result[0]);
-                }
-                break;
-            default:
-                break;
+        wmt['category'] = data['bestsellers_rank'] ? data['bestsellers_rank'][0]['category'].trim() : ""
+    } catch (error) {
+        console.log(error);
+    }
+    data['feature_bullets'].forEach(function (val, idx) {
+        if (idx === 9) return
+        wmt['feature' + (idx + 1)] = val
+    })
+    data['images'].forEach(function (val, idx) {
+        if (idx === 9) return
+        const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"
+        fs.mkdir(getDirName(imageFile), {recursive: true}, (err) => {
+            if (err) throw err;
+        });
+
+        try {
+            downloadImage(val, imageFile, function () {
+                console.log('done: ' + val);
+            })
+            wmt['image' + (idx + 1)] = "http://imgtong.s3.amazonaws.com/" + imageFile
+        } catch (e) {
+
+        }
+
+    })
+    wmt['price'] = data['price']['current_price']
+    return wmt
+}
+
+const downloadImage = function (uri, filename, callback) {
+    request.head(uri, function (err, res, body) {
+        request(uri).pipe(fs.createWriteStream(filename)).on('close', callback);
+    });
+};
+const startScraper = async (argv) => {
+
+    try {
+        if (argv['_'][0] === 'asinfile') {
+            console.log(argv.file)
+            const tasks = readInCsv(argv.file)
+            const jsonToCsv = new Parser({flatten: true});
+            for (let t of tasks) {
+                argv.asin = t[1];
+                const data = await AmazonScraper['asin']({
+                    ...argv,
+                    cli: true,
+                    rating: [argv['min-rating'], argv['max-rating']]
+                });
+
+                const wmt = await wmtFormat(t[0], data.result[0])
+                console.log(JSON.stringify(wmt))
+                await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(wmt), 'utf8', cb));
+            }
+
+        } else {
+            argv.scrapeType = argv._[0];
+            const data = await AmazonScraper[argv.scrapeType]({
+                ...argv,
+                cli: true,
+                rating: [argv['min-rating'], argv['max-rating']]
+            });
+            switch (argv.scrapeType) {
+                case 'countries':
+                    console.table(data);
+                    break;
+                case 'categories':
+                    console.table(data);
+                    break;
+                case 'products':
+                case 'reviews':
+                    if (!argv.filetype) {
+                        console.log(JSON.stringify(data));
+                    }
+                    break;
+                case 'asin':
+                    if (!argv.filetype) {
+                        console.log(data.result[0]);
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     } catch (error) {
         console.log(error);
@@ -47,6 +157,9 @@ require('yargs')
         startScraper(argv);
     })
     .command('asin [id]', 'single product details', {}, (argv) => {
+        startScraper(argv);
+    })
+    .command('asinfile [file]', 'product details from file with urls', {}, (argv) => {
         startScraper(argv);
     })
     .command('categories', 'get list of categories', {}, (argv) => {
@@ -79,7 +192,7 @@ require('yargs')
             describe: 'Number of products to scrape. Maximum 100 products or 300 reviews',
         },
         filetype: {
-            default: 'csv',
+            default: '',
             choices: ['csv', 'json', 'all', ''],
             describe: "Type of the output file where the data will be saved. 'all' - save data to the 'json' and 'csv' files",
         },
@@ -139,7 +252,7 @@ require('yargs')
         },
     })
     .check((argv) => {
-        if (['products', 'reviews', 'asin', 'categories', 'countries'].indexOf(argv['_'][0]) === -1) {
+        if (['products', 'reviews', 'asinfile', 'asin', 'categories', 'countries'].indexOf(argv['_'][0]) === -1) {
             throw 'Wrong command';
         }
         if (argv['_'][0] === 'products') {
@@ -160,6 +273,11 @@ require('yargs')
                 throw 'ASIN is missing';
             } else {
                 argv.asin = argv.id;
+            }
+        }
+        if (argv['_'][0] === 'asinfile') {
+            if (!argv.file) {
+                throw 'product file is missing';
             }
         }
 

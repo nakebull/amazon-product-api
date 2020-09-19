@@ -85,7 +85,9 @@ const wmtFormat = async (sku, data) => {
 
 const downloadImage = function (uri, filename, callback) {
     request.head(uri, function (err, res, body) {
-        request(uri).pipe(fs.createWriteStream(filename)).on('close', callback);
+        request(uri)
+            .pipe(fs.createWriteStream(filename))
+            .on('close', callback);
     });
 };
 const startScraper = async (argv) => {
@@ -99,19 +101,23 @@ const startScraper = async (argv) => {
             for (let t of tasks) {
                 argv.asin = t[1];
 
-                setTimeout(function () {
-                    console.log("Executing:" + t[1])
-                    console.log("Sleeping for 5s")
-                }, 5000);
+                try {
+                    const data = await AmazonScraper['asin']({
+                        ...argv,
+                        cli: true,
+                        rating: [argv['min-rating'], argv['max-rating']]
+                    });
+                    const wmt = await wmtFormat(t[0], data.result[0])
+                    res.push(wmt)
 
-                const data = await AmazonScraper['asin']({
-                    ...argv,
-                    cli: true,
-                    rating: [argv['min-rating'], argv['max-rating']]
-                });
+                    setTimeout(function () {
+                        console.log("Executing:" + t[1])
+                        console.log("Sleeping for 5s")
+                    }, 5000);
 
-                const wmt = await wmtFormat(t[0], data.result[0])
-                res.push(wmt)
+                } catch (e) {
+                    console.error(t[1] + ": Failed")
+                }
             }
             await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(res), 'utf8', cb));
 

@@ -71,7 +71,6 @@ const wmtFormat = async (sku, data) => {
 
         try {
             downloadImage(val, imageFile, function () {
-                console.log('done: ' + val);
             })
             wmt['image' + (idx + 1)] = "http://imgtong.s3.amazonaws.com/" + imageFile
         } catch (e) {
@@ -104,7 +103,11 @@ const startScraper = async (argv) => {
                 });
 
                 const wmt = await wmtFormat(t[0], data.result[0])
-                console.log(JSON.stringify(wmt))
+                
+                Promise.delay(5000).then(function () {
+                    console.log("Done:" + t[1])
+                    console.log("Sleeping for 5s")
+                })
                 await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(wmt), 'utf8', cb));
             }
 

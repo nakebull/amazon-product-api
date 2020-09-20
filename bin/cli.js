@@ -30,7 +30,7 @@ const wmtFormat = async (sku, data) => {
         sku: sku,
         category: "",
         product_name: data['title'],
-        description: data['description'],
+        description: "",
         feature1: "",
         feature2: "",
         feature3: "",
@@ -51,7 +51,7 @@ const wmtFormat = async (sku, data) => {
         image8: "",
         image9: "",
         image10: "",
-        price: 0.0,
+        price: data['price']['current_price'],
     }
     try {
         wmt['category'] = data['bestsellers_rank'] ? data['bestsellers_rank'][0]['category'].trim() : ""
@@ -62,6 +62,7 @@ const wmtFormat = async (sku, data) => {
         if (idx === 9) return
         wmt['feature' + (idx + 1)] = val
     })
+    wmt["description"] = data["description"] ? data["description"] : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
         const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"
@@ -71,7 +72,6 @@ const wmtFormat = async (sku, data) => {
 
         try {
             downloadImage(val, imageFile, function () {
-                // console.log(val)
             })
             wmt['image' + (idx + 1)] = "http://imgtong.s3.amazonaws.com/" + imageFile
         } catch (e) {
@@ -79,7 +79,6 @@ const wmtFormat = async (sku, data) => {
         }
 
     })
-    wmt['price'] = data['price']['current_price']
     return wmt
 }
 

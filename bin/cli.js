@@ -18,7 +18,7 @@ const readInCsv = (csvFile) => {
         if (m === null) {
             console.error("Wrong Url: " + cols[1])
         } else {
-            return [cols[0], m[4]]
+            return [cols[0], m[4].trim()]
         }
     }).filter(x => {
         return x != null
@@ -29,7 +29,7 @@ const wmtFormat = async (sku, data) => {
     const wmt = {
         sku: sku,
         category: "",
-        product_name: data['title'],
+        product_name: data['title'].replace(/[^\x20-\x7E]/g, ''),
         description: "",
         feature1: "",
         feature2: "",
@@ -60,9 +60,9 @@ const wmtFormat = async (sku, data) => {
     }
     data['feature_bullets'].forEach(function (val, idx) {
         if (idx === 9) return
-        wmt['feature' + (idx + 1)] = val
+        wmt['feature' + (idx + 1)] = val.replace(/[^\x20-\x7E]/g, '')
     })
-    wmt["description"] = data["description"] ? data["description"] : wmt['feature1']
+    wmt["description"] = data["description"] ? data["description"].replace(/[^\x20-\x7E]/g, '') : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
         const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"
@@ -83,11 +83,18 @@ const wmtFormat = async (sku, data) => {
 }
 
 const downloadImage = function (uri, filename, callback) {
-    request.head(uri, function (err, res, body) {
-        request(uri)
-            .pipe(fs.createWriteStream(filename))
-            .on('close', callback);
-    });
+    try {
+        request.head(uri, function (err, res, body) {
+            request(uri)
+                .pipe(fs.createWriteStream(filename))
+                .on('close', callback)
+                .on('error', function (err) {
+                    console.error("Image failed to download : " + uri)
+                });
+        });
+    } catch (e) {
+
+    }
 };
 const startScraper = async (argv) => {
 
@@ -97,6 +104,7 @@ const startScraper = async (argv) => {
             const tasks = readInCsv(argv.file)
             const jsonToCsv = new Parser({flatten: true});
             const res = []
+            const failed = []
             for (let t of tasks) {
                 argv.asin = t[1];
 
@@ -109,16 +117,20 @@ const startScraper = async (argv) => {
                     const wmt = await wmtFormat(t[0], data.result[0])
                     res.push(wmt)
 
-                    setTimeout(function () {
+                    await setTimeout(function () {
                         console.log("Executing:" + t[1])
                         console.log("Sleeping for 5s")
                     }, 5000);
 
                 } catch (e) {
-                    console.error(t[1] + ": Failed")
+                    console.error(t[1] + ": Failed");
+                    failed.push(t[1]);
                 }
             }
-            await fromCallback((cb) => fs.appendFile(`asinfile.csv`, jsonToCsv.parse(res), 'utf8', cb));
+            await fromCallback((cb) => fs.appendFile(argv.file + `_processed.csv`, jsonToCsv.parse(res), 'utf8', (cb) => {
+                console.error("Failed tasks :" + JSON.stringify(failed))
+            }));
+
 
         } else {
             argv.scrapeType = argv._[0];

@@ -123,8 +123,8 @@ const startScraper = async (argv) => {
                     }, 5000);
 
                 } catch (e) {
-                    console.error(t[1] + ": Failed");
-                    failed.push(t[1]);
+                    console.error(t[0] + ": Failed");
+                    failed.push(t);
                 }
             }
             await fromCallback((cb) => fs.appendFile(argv.file + `_processed.csv`, jsonToCsv.parse(res), 'utf8', (cb) => {

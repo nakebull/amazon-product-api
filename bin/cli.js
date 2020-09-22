@@ -25,11 +25,17 @@ const readInCsv = (csvFile) => {
     });
 }
 
+const aznclean = (line) => {
+    line.trim()
+        .replace(/[^\x20-\x7E]/g, '')
+        .replace(/amazon/ig, '').replace(/fba/ig, '')
+}
+
 const wmtFormat = async (sku, data) => {
     const wmt = {
         sku: sku,
         category: "",
-        product_name: data['title'].replace(/[^\x20-\x7E]/g, ''),
+        product_name: aznclean(data['title']),
         description: "",
         feature1: "",
         feature2: "",
@@ -60,9 +66,9 @@ const wmtFormat = async (sku, data) => {
     }
     data['feature_bullets'].forEach(function (val, idx) {
         if (idx === 9) return
-        wmt['feature' + (idx + 1)] = val.replace(/[^\x20-\x7E]/g, '')
+        wmt['feature' + (idx + 1)] = aznclean(val)
     })
-    wmt["description"] = data["description"] ? data["description"].replace(/[^\x20-\x7E]/g, '') : wmt['feature1']
+    wmt["description"] = data["description"] ? aznclean(data["description"]) : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
         const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"

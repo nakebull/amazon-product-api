@@ -5,7 +5,7 @@ const {fromCallback} = require('bluebird');
 const AmazonScraper = require('../lib');
 const {Parser} = require('json2csv');
 const getDirName = require('path').dirname;
-
+const jimp = require('jimp');
 
 const readInCsv = (csvFile) => {
     const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
@@ -25,17 +25,59 @@ const readInCsv = (csvFile) => {
     });
 }
 
-const aznclean = (line) => {
-    line.trim()
+const composeImage = async (faceImg) => {
+
+    const getImageDim = (img) => {
+        return [img.bitmap.width, img.bitmap.height]
+    }
+    const isSquare = (img) => {
+        return img.bitmap.width === img.bitmap.height
+    }
+    const getMaxDImage = (img) => {
+        return Math.max(img.bitmap.width, img.bitmap.height)
+    }
+
+    const getXY = (baseImg, overlayImg) => {
+        const dimA = getImageDim(baseImg)
+        const dimB = getImageDim(overlayImg)
+        const x = Math.max(Math.floor((dimA[0] - dimB[0]) / 2), 0)
+        const y = Math.max(Math.floor((dimA[1] - dimB[1]) / 2), 0)
+        return [x, y]
+    }
+
+    const baseImage = await jimp.read('base.jpg');
+    const faceImage = await jimp.read(faceImg);
+
+    if (isSquare(faceImage)) {
+        return
+    }
+
+    const rsz = getMaxDImage(faceImage) + 5
+    baseImage.resize(rsz, rsz)
+
+    const pos = getXY(baseImage, faceImage)
+    baseImage.composite(faceImage, pos[0], pos[1])
+    await baseImage.writeAsync(faceImg);
+}
+
+const aznClean = (line) => {
+    return line.trim()
         .replace(/[^\x20-\x7E]/g, '')
-        .replace(/amazon/ig, '').replace(/fba/ig, '')
+        .replace(/amazon/ig, '')
+        .replace(/fba/ig, '')
+        .replace(/alexa/ig, '')
+        .replace(/assault/ig, '');
+}
+
+const calculateWPrice = (aPrice) => {
+    return Math.max(((aPrice + 3.5) / 0.6), 9.99) / 0.6
 }
 
 const wmtFormat = async (sku, data) => {
     const wmt = {
         sku: sku,
         category: "",
-        product_name: aznclean(data['title']),
+        product_name: aznClean(data['title']),
         description: "",
         feature1: "",
         feature2: "",
@@ -57,7 +99,8 @@ const wmtFormat = async (sku, data) => {
         image8: "",
         image9: "",
         image10: "",
-        price: data['price']['current_price'],
+        MSRP: calculateWPrice(data['price']['current_price']) / 0.6,
+        price: calculateWPrice(data['price']['current_price'])
     }
     try {
         wmt['category'] = data['bestsellers_rank'] ? data['bestsellers_rank'][0]['category'].trim() : ""
@@ -66,9 +109,9 @@ const wmtFormat = async (sku, data) => {
     }
     data['feature_bullets'].forEach(function (val, idx) {
         if (idx === 9) return
-        wmt['feature' + (idx + 1)] = aznclean(val)
+        wmt['feature' + (idx + 1)] = aznClean(val)
     })
-    wmt["description"] = data["description"] ? aznclean(data["description"]) : wmt['feature1']
+    wmt["description"] = data["description"] ? aznClean(data["description"]) : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
         const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"
@@ -78,10 +121,13 @@ const wmtFormat = async (sku, data) => {
 
         try {
             downloadImage(val, imageFile, function () {
+                if (imageFile.includes("/1.jpg")) {
+                    composeImage(imageFile)
+                }
             })
             wmt['image' + (idx + 1)] = "http://imgtong.s3.amazonaws.com/" + imageFile
         } catch (e) {
-
+            console.error(e)
         }
 
     })
@@ -102,6 +148,7 @@ const downloadImage = function (uri, filename, callback) {
 
     }
 };
+
 const startScraper = async (argv) => {
 
     try {

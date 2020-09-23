@@ -19,7 +19,8 @@
         "request": "^2.88.0",
         "request-promise": "^4.2.4",
         "tough-cookie": "^3.0.1",
-        "yargs": "^14.2.0"
+        "yargs": "^14.2.0",
+        "jimp": "^0.16.1"
     },
     "devDependencies": {},
     "scripts": {

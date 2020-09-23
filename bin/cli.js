@@ -6,6 +6,7 @@ const AmazonScraper = require('../lib');
 const {Parser} = require('json2csv');
 const getDirName = require('path').dirname;
 const jimp = require('jimp');
+const path = require('path');
 
 const readInCsv = (csvFile) => {
     const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
@@ -44,15 +45,14 @@ const composeImage = async (faceImg) => {
         const y = Math.max(Math.floor((dimA[1] - dimB[1]) / 2), 0)
         return [x, y]
     }
-
-    const baseImage = await jimp.read('base.jpg');
+    const baseImage = await jimp.read(path.resolve( __dirname, "./base.jpg" ));
     const faceImage = await jimp.read(faceImg);
 
     if (isSquare(faceImage)) {
         return
     }
 
-    const rsz = getMaxDImage(faceImage) + 5
+    const rsz = getMaxDImage(faceImage) + 10
     baseImage.resize(rsz, rsz)
 
     const pos = getXY(baseImage, faceImage)

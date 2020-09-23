@@ -1,3 +1,5 @@
+
+//npm install -g git+ssh://git@github.com:nakebull/amazon-product-api.git
 const jimp = require('jimp');
 
 // const composeImage = async (faceImg) => {

@@ -176,7 +176,8 @@ const startScraper = async (argv) => {
                     }, 5000);
 
                 } catch (e) {
-                    console.error(t[0] + ": Failed");
+                    console.log(e);
+		    console.error(t[0] + ": Failed");
                     failed.push(t);
                 }
             }

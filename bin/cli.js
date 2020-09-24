@@ -7,20 +7,20 @@ const {Parser} = require('json2csv');
 const getDirName = require('path').dirname;
 const jimp = require('jimp');
 const path = require('path');
+const download = require('image-downloader')
 
 const readInCsv = (csvFile) => {
     // const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
     const regex = /(?:[/dp/]|$)([A-Z0-9]{10})/g;
-    return fs.readFileSync(csvFile).toString().split("\n").map(ln => {
-        const cols = ln.split(",");
-        if (cols.length !== 2) {
-            console.error("Wrong Input: " + ln)
-        }
-        const m = cols[1].trim().match(regex);
+    return fs.readFileSync(csvFile).toString().split("\n").map(line => {
+        const sku = line.substr(0, line.indexOf(',')).trim();
+        const amazonUrl = line.substr(line.indexOf(' ') + 1).trim();
+
+        const m = amazonUrl.match(regex);
         if (m === null) {
-            console.error("Wrong Url: " + cols[1])
+            console.error("Wrong Url: " + amazonUrl)
         } else {
-            return [cols[0].trim(), m[0].replace("/", "")]
+            return [sku, m[0].replace("/", "")]
         }
     }).filter(x => {
         return x != null
@@ -137,14 +137,9 @@ const wmtFormat = async (sku, data) => {
 
 const downloadImage = function (uri, filename, callback) {
     try {
-        request.head(uri, function (err, res, body) {
-            request(uri)
-                .pipe(fs.createWriteStream(filename))
-                .on('close', callback)
-                .on('error', function (err) {
-                    console.error("Image failed to download : " + uri)
-                });
-        });
+        download.image({url: uri, dest: filename})
+            .then(callback)
+            .catch((err) => console.error(err))
     } catch (e) {
 
     }

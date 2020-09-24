@@ -16,11 +16,11 @@ const readInCsv = (csvFile) => {
         if (cols.length !== 2) {
             console.error("Wrong Input: " + ln)
         }
-        const m = cols[1].match(regex)
+        const m = cols[1].trim().match(regex);
         if (m === null) {
             console.error("Wrong Url: " + cols[1])
         } else {
-            return [cols[0], m[0].replace("/", "")]
+            return [cols[0].trim(), m[0].replace("/", "")]
         }
     }).filter(x => {
         return x != null
@@ -169,7 +169,7 @@ const startScraper = async (argv) => {
                         rating: [argv['min-rating'], argv['max-rating']]
                     });
                     const wmt = await wmtFormat(t[0], data.result[0])
-                    res.push(wmt)
+                    res.push(wmt);
 
                     await setTimeout(function () {
                         console.log("Executing:" + t[1])

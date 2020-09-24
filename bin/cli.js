@@ -9,9 +9,10 @@ const jimp = require('jimp');
 const path = require('path');
 
 const readInCsv = (csvFile) => {
-    const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
+    // const regex = RegExp("https://www.amazon.com/([\\w-]+/)?(dp|gp/product)/(\\w+/)?(\\w{10})");
+    const regex = /(?:[/dp/]|$)([A-Z0-9]{10})/g;
     return fs.readFileSync(csvFile).toString().split("\n").map(ln => {
-        const cols = ln.split(",")
+        const cols = ln.split(",");
         if (cols.length !== 2) {
             console.error("Wrong Input: " + ln)
         }
@@ -19,7 +20,7 @@ const readInCsv = (csvFile) => {
         if (m === null) {
             console.error("Wrong Url: " + cols[1])
         } else {
-            return [cols[0], m[4].trim()]
+            return [cols[0], m[0].replace("/", "")]
         }
     }).filter(x => {
         return x != null
@@ -52,13 +53,13 @@ const composeImage = async (faceImg) => {
         return
     }
 
-    const rsz = getMaxDImage(faceImage) + 10
-    baseImage.resize(rsz, rsz)
+    const rsz = getMaxDImage(faceImage) + 10;
+    baseImage.resize(rsz, rsz);
 
-    const pos = getXY(baseImage, faceImage)
-    baseImage.composite(faceImage, pos[0], pos[1])
+    const pos = getXY(baseImage, faceImage);
+    baseImage.composite(faceImage, pos[0], pos[1]);
     await baseImage.writeAsync(faceImg);
-}
+};
 
 const aznClean = (line) => {
     return line.trim()
@@ -67,11 +68,11 @@ const aznClean = (line) => {
         .replace(/fba/ig, '')
         .replace(/alexa/ig, '')
         .replace(/assault/ig, '');
-}
+};
 
 const calculateWPrice = (aPrice) => {
     return Math.max(((aPrice + 3.5) / 0.6), 9.99).toFixed(2)
-}
+};
 
 const wmtFormat = async (sku, data) => {
     const wmt = {
@@ -177,7 +178,7 @@ const startScraper = async (argv) => {
 
                 } catch (e) {
                     console.log(e);
-		    console.error(t[0] + ": Failed");
+                    console.error(t[0] + ": Failed");
                     failed.push(t);
                 }
             }

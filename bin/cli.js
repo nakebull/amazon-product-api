@@ -45,7 +45,7 @@ const composeImage = async (faceImg) => {
         const y = Math.max(Math.floor((dimA[1] - dimB[1]) / 2), 0)
         return [x, y]
     }
-    const baseImage = await jimp.read(path.resolve( __dirname, "./base.jpg" ));
+    const baseImage = await jimp.read(path.resolve(__dirname, "./base.jpg"));
     const faceImage = await jimp.read(faceImg);
 
     if (isSquare(faceImage)) {
@@ -114,7 +114,7 @@ const wmtFormat = async (sku, data) => {
     wmt["description"] = data["description"] ? aznClean(data["description"]) : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
-        const imageFile = "390233/" + sku.replace("_", "/") + "/" + (idx + 1) + ".jpg"
+        const imageFile = "390233/" + sku.trim().replace("_", "/") + "/" + (idx + 1) + ".jpg"
         fs.mkdir(getDirName(imageFile), {recursive: true}, (err) => {
             if (err) throw err;
         });

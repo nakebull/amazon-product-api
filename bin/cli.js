@@ -100,7 +100,7 @@ const wmtFormat = async (sku, data) => {
         image8: "",
         image9: "",
         image10: "",
-        MSRP: calculateWPrice(data['price']['current_price']) / 0.6,
+        MSRP: (calculateWPrice(data['price']['current_price']) / 0.6).toFixed(2),
         price: calculateWPrice(data['price']['current_price'])
     }
     try {

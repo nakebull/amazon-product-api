@@ -1,6 +1,5 @@
 const fs = require('fs');
 const {parse} = require('fast-csv');
-// const csv = require('@fast-csv/parse');
 
 (async () => {
 

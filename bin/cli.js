@@ -71,7 +71,7 @@ const aznClean = (line) => {
 };
 
 const calculateWPrice = (aPrice) => {
-    return Math.max(((aPrice + 3.5) / 0.6), 9.99).toFixed(2)
+    return Math.max(((aPrice + 5.5) / 0.6), 9.99).toFixed(2)
 };
 
 const wmtFormat = async (sku, data) => {

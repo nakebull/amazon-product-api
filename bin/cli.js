@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 const fs = require('fs');
-const request = require('request');
 const {fromCallback} = require('bluebird');
 const AmazonScraper = require('../lib');
 const {Parser} = require('json2csv');
@@ -61,13 +60,16 @@ const composeImage = async (faceImg) => {
     await baseImage.writeAsync(faceImg);
 };
 
-const aznClean = (line) => {
-    return line.trim()
+const aznClean = (line, param = "") => {
+    const newline = line
         .replace(/[^\x20-\x7E]/g, '')
         .replace(/amazon/ig, '')
         .replace(/fba/ig, '')
         .replace(/alexa/ig, '')
-        .replace(/assault/ig, '');
+        .replace(/assault/ig, '')
+        .replace(new RegExp(param.toLowerCase(), 'ig'), "")
+        .replace(/  +/g, ' ');
+    return newline.trim()
 };
 
 const calculateWPrice = (aPrice) => {
@@ -78,7 +80,8 @@ const wmtFormat = async (sku, data) => {
     const wmt = {
         sku: sku,
         category: "",
-        product_name: aznClean(data['title']),
+        product_name: aznClean(data['title'] || "", data['store']),
+        store: data['store'],
         description: "",
         feature1: "",
         feature2: "",
@@ -110,9 +113,9 @@ const wmtFormat = async (sku, data) => {
     }
     data['feature_bullets'].forEach(function (val, idx) {
         if (idx === 9) return
-        wmt['feature' + (idx + 1)] = aznClean(val)
+        wmt['feature' + (idx + 1)] = aznClean(val, data['store'])
     })
-    wmt["description"] = data["description"] ? aznClean(data["description"]) : wmt['feature1']
+    wmt["description"] = data["description"] ? aznClean(data["description"], data['store']) : wmt['feature1']
     data['images'].forEach(function (val, idx) {
         if (idx === 9) return
         const imageFile = "390233/" + sku.trim().replace("_", "/") + "/" + (idx + 1) + ".jpg"

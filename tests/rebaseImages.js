@@ -1,5 +1,4 @@
 const fs = require('fs');
-const {parse} = require('fast-csv');
 
 (async () => {
 
@@ -14,7 +13,7 @@ const {parse} = require('fast-csv');
         const tasks = []
         const lines = fs.readFileSync(csvFile).toString().split("\n");
 
-        const stream = parse({ headers: true })
+        const stream = parse({headers: true})
             .transform((data) => ({
                 sku: data.sku.toUpperCase(),
                 amazon_url: data.amazon_url.match(regex)[0].replace("/", "")
@@ -46,8 +45,8 @@ const {parse} = require('fast-csv');
         //     )
     }
 
-    const a = await readInCsv('input.csv');
-    console.log(JSON.stringify(a))
+    const param = "BIG"
+    console.log("super big boy, Big dog".replace(new RegExp(param.toLowerCase(), 'ig'), "").replace(/  +/g, ' '))
 
 })
 ();

@@ -76,10 +76,12 @@ const calculateWPrice = (aPrice) => {
     return Math.max(((aPrice + 5.5) / 0.6), 9.99).toFixed(2)
 };
 
+
 const wmtFormat = async (sku, data) => {
     const wmt = {
         sku: sku,
         category: "",
+        keyword: "",
         product_name: aznClean(data['title'] || "", data['store']),
         store: data['store'],
         description: "",
@@ -106,11 +108,25 @@ const wmtFormat = async (sku, data) => {
         MSRP: (calculateWPrice(data['price']['current_price']) / 0.6).toFixed(2),
         price: calculateWPrice(data['price']['current_price'])
     }
-    try {
-        wmt['category'] = data['bestsellers_rank'] ? data['bestsellers_rank'][0]['category'].trim() : ""
-    } catch (error) {
-        console.log(error);
+
+    if ('bestsellers_rank' in data && data['bestsellers_rank'].length > 0) {
+        const bestSellerRanks = data['bestsellers_rank'];
+        bestSellerRanks.sort((a, b) => {
+            if (a.rank !== b.rank) {
+                return (a.rank < b.rank) ? -1 : 1;
+            } else {
+                return (a.category.length < b.category.length) ? -1 : 1;
+            }
+        })
+
+        try {
+            wmt['category'] = bestSellerRanks[bestSellerRanks.length - 1]['category'].trim();
+            wmt['keyword'] = bestSellerRanks[0]['category'].trim();
+        } catch (error) {
+            console.log(error);
+        }
     }
+
     data['feature_bullets'].forEach(function (val, idx) {
         if (idx === 9) return
         wmt['feature' + (idx + 1)] = aznClean(val, data['store'])
@@ -159,7 +175,6 @@ const startScraper = async (argv) => {
             const failed = []
             for (let t of tasks) {
                 argv.asin = t[1];
-
                 try {
                     const data = await AmazonScraper['asin']({
                         ...argv,
